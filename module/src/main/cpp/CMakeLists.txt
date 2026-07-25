@@ -13,13 +13,17 @@ set(CMAKE_CXX_STANDARD 20)
 # Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 
-# Подключаем оригинальный репозиторий и применяем Regex-патч с экранированным \\1
+# Подключаем оригинальный репозиторий и делаем хардкод-замену строк для NDK
+# Никаких регулярных выражений — просто точная замена проблемных инструкций Apple-синтаксиса
 include(FetchContent)
 FetchContent_Declare(
     dobby
     GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
-    PATCH_COMMAND sh -c "sed -i -E 's/([a-zA-Z0-9_]+)@PAGEOFF/:lo12:\\\\1/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && sed -i 's/@PAGE//g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm"
+    PATCH_COMMAND sh -c "sed -i 's/common_closure_bridge_handler@PAGEOFF/:lo12:common_closure_bridge_handler/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
+                         sed -i 's/common_closure_bridge_handler@PAGE/common_closure_bridge_handler/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
+                         sed -i 's/closure_trampoline_trampoline@PAGEOFF/:lo12:closure_trampoline_trampoline/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
+                         sed -i 's/closure_trampoline_trampoline@PAGE/closure_trampoline_trampoline/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm"
 )
 FetchContent_MakeAvailable(dobby)
 
