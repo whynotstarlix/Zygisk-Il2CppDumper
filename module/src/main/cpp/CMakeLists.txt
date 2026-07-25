@@ -10,8 +10,8 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 20)
 
-# === Настройки Dobby (LSPosed fork) ===
-set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)   # только статическая библиотека
+# === Dobby (LSPosed) ===
+set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 set(DOBBY_DEBUG OFF CACHE BOOL "" FORCE)
 set(NearBranch ON CACHE BOOL "" FORCE)
 set(Plugin.SymbolResolver ON CACHE BOOL "" FORCE)
@@ -47,23 +47,41 @@ add_library(${MODULE_NAME} SHARED
     ${xdl-src}
 )
 
+# Общие флаги
 target_compile_options(${MODULE_NAME} PRIVATE
     -Werror=format
     -fdata-sections
     -ffunction-sections
     -fno-exceptions
     -fno-rtti
-    \( < \)<NOT:$<CONFIG:Debug>>:-O2 -fvisibility=hidden -fvisibility-inlines-hidden>
-    \( < \)<CONFIG:Debug>:-O0>
 )
+
+# Флаги в зависимости от типа сборки (без generator expressions)
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(${MODULE_NAME} PRIVATE
+        -O2
+        -fvisibility=hidden
+        -fvisibility-inlines-hidden
+    )
+else ()
+    target_compile_options(${MODULE_NAME} PRIVATE
+        -O0
+    )
+endif ()
 
 target_link_options(${MODULE_NAME} PRIVATE
     -ffixed-x18
     -Wl,--hash-style=both
-    \( < \)<NOT:$<CONFIG:Debug>>:-Wl,-exclude-libs,ALL -Wl,--gc-sections -Wl,--strip-all>
 )
 
-# Линкуем статическую версию dobby
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_link_options(${MODULE_NAME} PRIVATE
+        -Wl,-exclude-libs,ALL
+        -Wl,--gc-sections
+        -Wl,--strip-all
+    )
+endif ()
+
 target_link_libraries(${MODULE_NAME}
     log
     dobby
@@ -72,5 +90,6 @@ target_link_libraries(${MODULE_NAME}
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(TARGET ${MODULE_NAME} POST_BUILD
         COMMAND ${CMAKE_STRIP} --strip-all --remove-section=.comment
-                "\( {CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib \){MODULE_NAME}.so")
+                "\( {CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib \){MODULE_NAME}.so"
+    )
 endif ()
