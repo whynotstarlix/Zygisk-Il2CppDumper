@@ -13,19 +13,34 @@ set(CMAKE_CXX_STANDARD 20)
 # Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 
-# Подключаем оригинальный репозиторий и делаем хардкод-замену строк для NDK
-# Никаких регулярных выражений — просто точная замена проблемных инструкций Apple-синтаксиса
+# Подключаем оригинальный репозиторий Dobby
 include(FetchContent)
 FetchContent_Declare(
     dobby
     GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
-    PATCH_COMMAND sh -c "sed -i 's/common_closure_bridge_handler@PAGEOFF/:lo12:common_closure_bridge_handler/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
-                         sed -i 's/common_closure_bridge_handler@PAGE/common_closure_bridge_handler/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
-                         sed -i 's/closure_trampoline_trampoline@PAGEOFF/:lo12:closure_trampoline_trampoline/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && \
-                         sed -i 's/closure_trampoline_trampoline@PAGE/closure_trampoline_trampoline/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm"
 )
 FetchContent_MakeAvailable(dobby)
+
+# --- 100% CMAKE-ПАТЧ (БЕЗ УТИЛИТ SED И КОМАНДНЫХ ОБОЛОЧЕК) ---
+# CMake сам скачает файлы, прочитает их как текст, исправит синтаксис и сохранит перед сборкой
+
+set(DOBBY_ASM_FILE1 "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
+if(EXISTS "${DOBBY_ASM_FILE1}")
+    file(READ "${DOBBY_ASM_FILE1}" ASM_CONTENT)
+    string(REPLACE "common_closure_bridge_handler@PAGEOFF" ":lo12:common_closure_bridge_handler" ASM_CONTENT "${ASM_CONTENT}")
+    string(REPLACE "common_closure_bridge_handler@PAGE" "common_closure_bridge_handler" ASM_CONTENT "${ASM_CONTENT}")
+    file(WRITE "${DOBBY_ASM_FILE1}" "${ASM_CONTENT}")
+endif()
+
+set(DOBBY_ASM_FILE2 "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_trampoline_arm64.asm")
+if(EXISTS "${DOBBY_ASM_FILE2}")
+    file(READ "${DOBBY_ASM_FILE2}" ASM_CONTENT)
+    string(REPLACE "closure_trampoline_trampoline@PAGEOFF" ":lo12:closure_trampoline_trampoline" ASM_CONTENT "${ASM_CONTENT}")
+    string(REPLACE "closure_trampoline_trampoline@PAGE" "closure_trampoline_trampoline" ASM_CONTENT "${ASM_CONTENT}")
+    file(WRITE "${DOBBY_ASM_FILE2}" "${ASM_CONTENT}")
+endif()
+# ---------------------------------------------------------------
 
 include_directories(
         xdl/include
