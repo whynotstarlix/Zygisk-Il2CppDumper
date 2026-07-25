@@ -1,14 +1,16 @@
 name: Build
+
 on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
-    inputs:
-      package_name:
-        description: "Package name of the game:"
-        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
 
@@ -21,8 +23,6 @@ jobs:
     - name: Build Module
       run: |
         chmod +x ./gradlew
-        sed -i 's/moduleDescription = "/moduleDescription = "(${{ github.event.inputs.package_name }}) /g' module.gradle
-        sed -i "s/com.game.packagename/${{ github.event.inputs.package_name }}/g" module/src/main/cpp/game.h
         ./gradlew :module:assembleRelease
 
     - name: Upload Artifact
