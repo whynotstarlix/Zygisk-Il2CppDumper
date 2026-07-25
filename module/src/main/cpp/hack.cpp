@@ -52,7 +52,9 @@ void setup_hooks() {
     LOGI("[DUMPER] Installing mprotect hook via Dobby...");
     void *mprotect_addr = dlsym(RTLD_DEFAULT, "mprotect");
     if (mprotect_addr) {
-        DobbyHook(mprotect_addr, (void *)fake_mprotect, (void **)&orig_mprotect);
+        DobbyHook(mprotect_addr,
+                  reinterpret_cast<dobby_dummy_func_t>(fake_mprotect),
+                  reinterpret_cast<dobby_dummy_func_t *>(&orig_mprotect));
         LOGI("[DUMPER] Hook successfully placed on mprotect at %p", mprotect_addr);
     } else {
         LOGE("[DUMPER] Could not resolve mprotect symbol from libc");
