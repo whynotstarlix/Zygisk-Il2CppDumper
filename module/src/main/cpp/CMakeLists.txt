@@ -47,7 +47,6 @@ add_library(${MODULE_NAME} SHARED
     ${xdl-src}
 )
 
-# Общие флаги
 target_compile_options(${MODULE_NAME} PRIVATE
     -Werror=format
     -fdata-sections
@@ -56,7 +55,6 @@ target_compile_options(${MODULE_NAME} PRIVATE
     -fno-rtti
 )
 
-# Флаги в зависимости от типа сборки (без generator expressions)
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${MODULE_NAME} PRIVATE
         -O2
@@ -89,7 +87,7 @@ target_link_libraries(${MODULE_NAME}
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(TARGET ${MODULE_NAME} POST_BUILD
-        COMMAND ${CMAKE_STRIP} --strip-all --remove-section=.comment
-                "\( {CMAKE_LIBRARY_OUTPUT_DIRECTORY}/lib \){MODULE_NAME}.so"
+        COMMAND ${CMAKE_STRIP} --strip-all --remove-section=.comment \( <TARGET_FILE: \){MODULE_NAME}>
+        COMMENT "Stripping ${MODULE_NAME}"
     )
 endif ()
