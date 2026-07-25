@@ -13,12 +13,13 @@ set(CMAKE_CXX_STANDARD 20)
 # Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 
-# --- ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ ФОРК ОТ CHITEROMAN ---
+# Подключаем оригинальный репозиторий и исправляем синтаксис ASM для NDK на лету
 include(FetchContent)
 FetchContent_Declare(
     dobby
-    GIT_REPOSITORY https://github.com/chiteroman/Dobby.git
+    GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
+    PATCH_COMMAND sed -i "s/@PAGEOFF/:lo12:/g" source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && sed -i "s/@PAGE//g" source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm
 )
 FetchContent_MakeAvailable(dobby)
 
@@ -35,7 +36,6 @@ add_library(${MODULE_NAME} SHARED
         il2cpp_dump.cpp
         ${xdl-src})
 
-# Флаги компиляции строго для твоего модуля
 target_compile_options(${MODULE_NAME} PRIVATE
         -Werror=format
         -fdata-sections
