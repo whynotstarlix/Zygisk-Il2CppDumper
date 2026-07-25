@@ -10,7 +10,12 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 20)
 
-# --- 1. Подключение Dobby ---
+# --- 1. Опции конфигурации Dobby (задаем ДО FetchContent) ---
+set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+set(BUILD_WITH_TRAMPOLINE_ASM OFF CACHE BOOL "" FORCE)
+set(CLOSURE_TRAMPOLINE OFF CACHE BOOL "" FORCE)
+
+# --- 2. Подключение Dobby ---
 include(FetchContent)
 FetchContent_Declare(
     dobby
@@ -18,13 +23,9 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-# Отключаем генерацию shared-библиотеки и сборящий ASM-трамплин Dobby
-set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
-set(DYNAMIC_CLOSURE_TRAMPOLINE OFF CACHE BOOL "" FORCE)
-
 FetchContent_MakeAvailable(dobby)
 
-# --- 2. Исходные файлы и каталоги ---
+# --- 3. Исходные файлы и инклюды ---
 include_directories(
         xdl/include
         ${dobby_SOURCE_DIR}/include
@@ -38,7 +39,7 @@ add_library(${MODULE_NAME} SHARED
         il2cpp_dump.cpp
         ${xdl-src})
 
-# --- 3. Флаги компиляции строго для целевого модуля ---
+# --- 4. Изолированные флаги для целевого модуля ---
 target_compile_options(${MODULE_NAME} PRIVATE
         -Werror=format
         -fdata-sections
