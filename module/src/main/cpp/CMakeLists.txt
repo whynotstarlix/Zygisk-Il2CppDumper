@@ -10,14 +10,18 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 20)
 
-# --- 1. Подключаем Dobby ДО задания кастомных глобальных флагов ---
+# --- 1. Подключение Dobby ---
 include(FetchContent)
 FetchContent_Declare(
     dobby
     GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
 )
+
+# Отключаем генерацию shared-библиотеки и сборящий ASM-трамплин Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+set(DYNAMIC_CLOSURE_TRAMPOLINE OFF CACHE BOOL "" FORCE)
+
 FetchContent_MakeAvailable(dobby)
 
 # --- 2. Исходные файлы и каталоги ---
@@ -34,7 +38,7 @@ add_library(${MODULE_NAME} SHARED
         il2cpp_dump.cpp
         ${xdl-src})
 
-# --- 3. Настраиваем флаги строго для НАШЕГО модуля (не затрагивая Dobby) ---
+# --- 3. Флаги компиляции строго для целевого модуля ---
 target_compile_options(${MODULE_NAME} PRIVATE
         -Werror=format
         -fdata-sections
