@@ -10,8 +10,9 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 20)
 
-# Отключаем генерацию shared-библиотеки Dobby
+# Настройки Dobby для сборки под Android
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+set(BUILD_WITH_TRAMPOLINE_ASM OFF CACHE BOOL "" FORCE)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -20,31 +21,16 @@ FetchContent_Declare(
     GIT_TAG master
 )
 
-# --- РУЧНОЙ КОНТРОЛЬ СКАЧИВАНИЯ И ПАТЧИНГА ---
 FetchContent_GetProperties(dobby)
 if(NOT dobby_POPULATED)
-    # 1. Скачиваем исходники
     FetchContent_Populate(dobby)
-
-    # 2. Ищем все ассемблерные файлы Dobby
-    file(GLOB_RECURSE ASM_FILES "${dobby_SOURCE_DIR}/*.asm")
     
-    # 3. Патчим синтаксис Apple -> NDK (GNU AS) прямо в памяти
-    foreach(ASM_FILE IN LISTS ASM_FILES)
-        file(READ "${ASM_FILE}" ASM_CONTENT)
-        
-        # Переставляем модификатор младших битов перед именем переменной
-        string(REGEX REPLACE "([a-zA-Z0-9_]+)@PAGEOFF" ":lo12:\\1" ASM_CONTENT "${ASM_CONTENT}")
-        # Удаляем модификатор страницы
-        string(REGEX REPLACE "([a-zA-Z0-9_]+)@PAGE" "\\1" ASM_CONTENT "${ASM_CONTENT}")
-        
-        file(WRITE "${ASM_FILE}" "${ASM_CONTENT}")
-    endforeach()
+    # Жестко удаляем проблемные ассемблерные файлы, чтобы Clang даже не пытался их компилировать
+    file(REMOVE "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
+    file(REMOVE "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_trampoline_arm64.asm")
 
-    # 4. Только теперь подключаем исправленный проект к нашей сборке
     add_subdirectory(${dobby_SOURCE_DIR} ${dobby_BINARY_DIR})
 endif()
-# --------------------------------------------
 
 include_directories(
         xdl/include
