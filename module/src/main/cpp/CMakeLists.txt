@@ -84,10 +84,3 @@ target_link_libraries(${MODULE_NAME}
     log
     dobby
 )
-
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_custom_command(TARGET ${MODULE_NAME} POST_BUILD
-        COMMAND ${CMAKE_STRIP} --strip-all --remove-section=.comment \( <TARGET_FILE: \){MODULE_NAME}>
-        COMMENT "Stripping ${MODULE_NAME}"
-    )
-endif ()
