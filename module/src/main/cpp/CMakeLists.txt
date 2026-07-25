@@ -13,13 +13,13 @@ set(CMAKE_CXX_STANDARD 20)
 # Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 
-# Подключаем оригинальный репозиторий и исправляем синтаксис ASM для NDK на лету
+# Подключаем оригинальный репозиторий и вызываем оболочку sh -c для корректной работы sed
 include(FetchContent)
 FetchContent_Declare(
     dobby
     GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
-    PATCH_COMMAND sed -i "s/@PAGEOFF/:lo12:/g" source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && sed -i "s/@PAGE//g" source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm
+    PATCH_COMMAND sh -c "sed -i 's/@PAGEOFF/:lo12:/g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm && sed -i 's/@PAGE//g' source/TrampolineBridge/ClosureTrampolineBridge/arm64/*.asm"
 )
 FetchContent_MakeAvailable(dobby)
 
