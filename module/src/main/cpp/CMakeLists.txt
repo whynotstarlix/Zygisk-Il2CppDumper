@@ -13,34 +13,38 @@ set(CMAKE_CXX_STANDARD 20)
 # Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
 
-# Подключаем оригинальный репозиторий Dobby
 include(FetchContent)
 FetchContent_Declare(
     dobby
     GIT_REPOSITORY https://github.com/jmpews/Dobby.git
     GIT_TAG master
 )
-FetchContent_MakeAvailable(dobby)
 
-# --- 100% CMAKE-ПАТЧ (БЕЗ УТИЛИТ SED И КОМАНДНЫХ ОБОЛОЧЕК) ---
-# CMake сам скачает файлы, прочитает их как текст, исправит синтаксис и сохранит перед сборкой
+# --- РУЧНОЙ КОНТРОЛЬ СКАЧИВАНИЯ И ПАТЧИНГА ---
+FetchContent_GetProperties(dobby)
+if(NOT dobby_POPULATED)
+    # 1. Скачиваем исходники
+    FetchContent_Populate(dobby)
 
-set(DOBBY_ASM_FILE1 "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_bridge_arm64.asm")
-if(EXISTS "${DOBBY_ASM_FILE1}")
-    file(READ "${DOBBY_ASM_FILE1}" ASM_CONTENT)
-    string(REPLACE "common_closure_bridge_handler@PAGEOFF" ":lo12:common_closure_bridge_handler" ASM_CONTENT "${ASM_CONTENT}")
-    string(REPLACE "common_closure_bridge_handler@PAGE" "common_closure_bridge_handler" ASM_CONTENT "${ASM_CONTENT}")
-    file(WRITE "${DOBBY_ASM_FILE1}" "${ASM_CONTENT}")
+    # 2. Ищем все ассемблерные файлы Dobby
+    file(GLOB_RECURSE ASM_FILES "${dobby_SOURCE_DIR}/*.asm")
+    
+    # 3. Патчим синтаксис Apple -> NDK (GNU AS) прямо в памяти
+    foreach(ASM_FILE IN LISTS ASM_FILES)
+        file(READ "${ASM_FILE}" ASM_CONTENT)
+        
+        # Переставляем модификатор младших битов перед именем переменной
+        string(REGEX REPLACE "([a-zA-Z0-9_]+)@PAGEOFF" ":lo12:\\1" ASM_CONTENT "${ASM_CONTENT}")
+        # Удаляем модификатор страницы
+        string(REGEX REPLACE "([a-zA-Z0-9_]+)@PAGE" "\\1" ASM_CONTENT "${ASM_CONTENT}")
+        
+        file(WRITE "${ASM_FILE}" "${ASM_CONTENT}")
+    endforeach()
+
+    # 4. Только теперь подключаем исправленный проект к нашей сборке
+    add_subdirectory(${dobby_SOURCE_DIR} ${dobby_BINARY_DIR})
 endif()
-
-set(DOBBY_ASM_FILE2 "${dobby_SOURCE_DIR}/source/TrampolineBridge/ClosureTrampolineBridge/arm64/closure_trampoline_arm64.asm")
-if(EXISTS "${DOBBY_ASM_FILE2}")
-    file(READ "${DOBBY_ASM_FILE2}" ASM_CONTENT)
-    string(REPLACE "closure_trampoline_trampoline@PAGEOFF" ":lo12:closure_trampoline_trampoline" ASM_CONTENT "${ASM_CONTENT}")
-    string(REPLACE "closure_trampoline_trampoline@PAGE" "closure_trampoline_trampoline" ASM_CONTENT "${ASM_CONTENT}")
-    file(WRITE "${DOBBY_ASM_FILE2}" "${ASM_CONTENT}")
-endif()
-# ---------------------------------------------------------------
+# --------------------------------------------
 
 include_directories(
         xdl/include
