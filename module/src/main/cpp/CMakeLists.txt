@@ -27,8 +27,19 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_FLAGS} ${CXX_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LINKER_FLAGS}")
 set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${LINKER_FLAGS}")
 
+# --- Подключение Dobby (Inline Hooking) ---
+include(FetchContent)
+FetchContent_Declare(
+    dobby
+    GIT_REPOSITORY https://github.com/jmpews/Dobby.git
+    GIT_TAG master
+)
+set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(dobby)
+
 include_directories(
         xdl/include
+        ${dobby_SOURCE_DIR}/include
 )
 
 aux_source_directory(xdl xdl-src)
@@ -38,7 +49,8 @@ add_library(${MODULE_NAME} SHARED
         hack.cpp
         il2cpp_dump.cpp
         ${xdl-src})
-target_link_libraries(${MODULE_NAME} log)
+
+target_link_libraries(${MODULE_NAME} log dobby)
 
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(TARGET ${MODULE_NAME} POST_BUILD

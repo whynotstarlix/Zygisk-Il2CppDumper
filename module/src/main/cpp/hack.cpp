@@ -1,11 +1,13 @@
 //
 // Created by Perfare on 2020/7/4.
+// Updated for memory dumping via Dobby hook
 //
 
 #include "hack.h"
 #include "il2cpp_dump.h"
 #include "log.h"
 #include "xdl.h"
+#include "dobby.h"
 #include <cstring>
 #include <cstdio>
 #include <unistd.h>
@@ -16,23 +18,53 @@
 #include <sys/mman.h>
 #include <linux/unistd.h>
 #include <array>
+#include <fcntl.h>
 
-void hack_start(const char *game_data_dir) {
-    bool load = false;
-    for (int i = 0; i < 10; i++) {
-        void *handle = xdl_open("libil2cpp.so", 0);
-        if (handle) {
-            load = true;
-            il2cpp_api_init(handle);
-            il2cpp_dump(game_data_dir);
-            break;
+static char g_game_data_dir[512] = {0};
+static int (*orig_mprotect)(void *addr, size_t len, int prot) = nullptr;
+
+// Перехватчик mprotect
+int fake_mprotect(void *addr, size_t len, int prot) {
+    // Фильтруем: берем только участки с правами на выполнение (PROT_EXEC) размером более 1 МБ
+    if ((prot & PROT_EXEC) && len > 1024 * 1024) {
+        LOGI("[DUMPER] Detected mprotect(PROT_EXEC) at %p, size: %zu", addr, len);
+        
+        char dump_path[512];
+        if (g_game_data_dir[0] != '\0') {
+            snprintf(dump_path, sizeof(dump_path), "%s/files/dump_%p.bin", g_game_data_dir, addr);
         } else {
-            sleep(1);
+            snprintf(dump_path, sizeof(dump_path), "/sdcard/Download/dump_%p.bin", addr);
+        }
+
+        int fd = open(dump_path, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+        if (fd >= 0) {
+            write(fd, addr, len);
+            close(fd);
+            LOGI("[DUMPER] Memory range dumped successfully to %s", dump_path);
+        } else {
+            LOGE("[DUMPER] Failed to open dump file: %s", dump_path);
         }
     }
-    if (!load) {
-        LOGI("libil2cpp.so not found in thread %d", gettid());
+    return orig_mprotect(addr, len, prot);
+}
+
+void setup_hooks() {
+    LOGI("[DUMPER] Installing mprotect hook via Dobby...");
+    void *mprotect_addr = dlsym(RTLD_DEFAULT, "mprotect");
+    if (mprotect_addr) {
+        DobbyHook(mprotect_addr, (dobby_dummy_func_t)fake_mprotect, (dobby_dummy_func_t*)&orig_mprotect);
+        LOGI("[DUMPER] Hook successfully placed on mprotect at %p", mprotect_addr);
+    } else {
+        LOGE("[DUMPER] Could not resolve mprotect symbol from libc");
     }
+}
+
+void hack_start(const char *game_data_dir) {
+    if (game_data_dir) {
+        snprintf(g_game_data_dir, sizeof(g_game_data_dir), "%s", game_data_dir);
+    }
+    setup_hooks();
+    LOGI("[DUMPER] Memory hook thread running (tid: %d)", gettid());
 }
 
 std::string GetLibDir(JavaVM *vms) {
@@ -112,7 +144,6 @@ struct NativeBridgeCallbacks {
 };
 
 bool NativeBridgeLoad(const char *game_data_dir, int api_level, void *data, size_t length) {
-    //TODO 等待houdini初始化
     sleep(5);
 
     auto libart = dlopen("libart.so", RTLD_NOW);
