@@ -10,22 +10,18 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 
 set(CMAKE_CXX_STANDARD 20)
 
-# --- 1. Опции конфигурации Dobby (задаем ДО FetchContent) ---
+# Отключаем генерацию shared-библиотеки Dobby
 set(DOBBY_GENERATE_SHARED OFF CACHE BOOL "" FORCE)
-set(BUILD_WITH_TRAMPOLINE_ASM OFF CACHE BOOL "" FORCE)
-set(CLOSURE_TRAMPOLINE OFF CACHE BOOL "" FORCE)
 
-# --- 2. Подключение Dobby ---
+# --- ИСПОЛЬЗУЕМ ИСПРАВЛЕННЫЙ ФОРК ОТ CHITEROMAN ---
 include(FetchContent)
 FetchContent_Declare(
     dobby
-    GIT_REPOSITORY https://github.com/jmpews/Dobby.git
+    GIT_REPOSITORY https://github.com/chiteroman/Dobby.git
     GIT_TAG master
 )
-
 FetchContent_MakeAvailable(dobby)
 
-# --- 3. Исходные файлы и инклюды ---
 include_directories(
         xdl/include
         ${dobby_SOURCE_DIR}/include
@@ -39,7 +35,7 @@ add_library(${MODULE_NAME} SHARED
         il2cpp_dump.cpp
         ${xdl-src})
 
-# --- 4. Изолированные флаги для целевого модуля ---
+# Флаги компиляции строго для твоего модуля
 target_compile_options(${MODULE_NAME} PRIVATE
         -Werror=format
         -fdata-sections
